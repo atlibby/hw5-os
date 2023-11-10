@@ -87,6 +87,10 @@ int schedulerTests() {
     Task *task9 = createTask(9, 8, 4);
     enqueue(&scheduler, 6, task9);
 
+    printScheduler(scheduler, printTask);
+
+    printf("--------------------------------------------------\n");
+
     task = peek(scheduler);
     printf("peek: ");
     printTask(scheduler);
@@ -122,9 +126,34 @@ int schedulerTests() {
     if (rc != 0)
         ++numfails;
 
+    printf("--------------------------------------------------\n");
+
+    Task *task10 = createTask(10, 9, 5);
+    enqueue(&scheduler, 3, task10);
+
+    Task *task11 = createTask(11, 10, 3);
+    enqueue(&scheduler, 8, task11);
+
+    Task *task12 = createTask(12, 11, 6);
+    enqueue(&scheduler, 1, task12);
+
     printScheduler(scheduler, printTask);
 
+    // order: task12, task7, task4, task10, task8, task5, task9, task6, task11, task2
+    Task *schedulerContents[] = {task4, task10, task11, task12, task2, task5, task6, task7, task8, task9};
+    unsigned int priorities[] = {3, 3, 8, 1, 8, 5, 7, 2, 4, 6};
 
+    int idx = 0;
+
+    while (scheduler != NULL) {
+        task = dequeue(&scheduler);
+        rc = checkResult(task, schedulerContents[idx]);
+        if (rc != 0)
+            ++numfails;
+        if (task != NULL)
+            free(task);
+        ++idx;
+    }
 
     // Test peek
     task = peek(scheduler);
@@ -145,9 +174,9 @@ int schedulerTests() {
         numfails++;
     }
 // First come first serve (FCFS) and shortest job first (SJF) scheduling algorithm
-
+}
 
 int main() {
-    printf("Hello, World!\n");
+    schedulerTests();
     return 0;
 }
