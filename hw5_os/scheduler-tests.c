@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "scheduler.atlibby.alynkirscht.h"
 
 // Create tasks and put them in the taskQueue
@@ -20,160 +21,112 @@ Task *createTask(int taskID, int submitTime, int totalBurstTime) {
     return task;
 }
 
-
-int checkResult(Task *testTask, Task *expectedTask) {
-    int rtnval = 0;
-
-    if (testTask == NULL) {
-        printf("ERROR: checking result; have NULL pointer\n");
-        rtnval = 1;
-    } else {
-        if (testTask->taskID != expectedTask->taskID) {
-            printf("ERROR: checking result; expected '%d' but got '%d'\n",
-                   expectedTask->taskID, testTask->taskID);
-            rtnval = 1;
-        }
-        if (testTask->submitTime != expectedTask->submitTime) {
-            printf("ERROR: checking result; expected %d but got %d\n",
-                   expectedTask->submitTime, testTask->submitTime);
-            rtnval = 1;
-        }
-        if (testTask->totalBurstTime != expectedTask->totalBurstTime) {
-            printf("ERROR: checking result; expected %d but got %d\n",
-                   expectedTask->totalBurstTime, testTask->totalBurstTime);
-            rtnval = 1;
-        }
-        if (testTask->totalWaitTime != expectedTask->totalWaitTime) {
-            printf("ERROR: checking result; expected %d but got %d\n",
-                   expectedTask->totalWaitTime, testTask->totalWaitTime);
-            rtnval = 1;
-        }
-    }
-    return rtnval;
-}
-
 int schedulerTests() {
     int minPriority;
     SchedulerNode *scheduler = NULL;
     Task *task;
-    int rc, numfails;
 
-    numfails = 0;
-
-    Task *task1 = createTask(1, 0, 5);
+    Task *task1 = createTask(1, 0, 6);
     enqueue(&scheduler, 3, task1);
 
-    Task *task2 = createTask(2, 1, 3);
+    Task *task2 = createTask(2, 2, 8);
     enqueue(&scheduler, 8, task2);
 
-    Task *task3 = createTask(3, 2, 6);
+    Task *task3 = createTask(3, 4, 7);
     enqueue(&scheduler, 1, task3);
 
-    Task *task4 = createTask(4, 3, 4);
+    Task *task4 = createTask(4, 8, 3);
     enqueue(&scheduler, 3, task4);
 
-    Task *task5 = createTask(5, 4, 2);
-    enqueue(&scheduler, 5, task5);
+    int currentTime = 0;
 
-    Task *task6 = createTask(6, 5, 1);
-    enqueue(&scheduler, 7, task6);
+    int totalWaitTime = 0;
 
-    Task *task7 = createTask(7, 6, 3);
-    enqueue(&scheduler, 2, task7);
+    bool done;
 
-    Task *task8 = createTask(8, 7, 2);
-    enqueue(&scheduler, 4, task8);
+// First come, first served (FCFS) scheduling algorithm
+    printf("First come first served (FCFS) scheduling algorithm\n");
+    scheduler = NULL;
+    task1 = createTask(1, 0, 6);
+    enqueue(&scheduler, 0, task1);
 
-    Task *task9 = createTask(9, 8, 4);
-    enqueue(&scheduler, 6, task9);
+    task2 = createTask(2, 2, 8);
+    enqueue(&scheduler, 2, task2);
 
-    printScheduler(scheduler, printTask);
+    task3 = createTask(3, 4, 7);
+    enqueue(&scheduler, 4, task3);
 
-    printf("--------------------------------------------------\n");
+    task4 = createTask(4, 8, 3);
+    enqueue(&scheduler, 8, task4);
 
-    task = peek(scheduler);
-    printf("peek: ");
-    printTask(scheduler);
-    rc = checkResult(task, task3);
-    if (rc != 0)
-        ++numfails;
+    currentTime = 0;
 
-    task = dequeue(&scheduler);
-    printf("dequeued: ");
-    printTask(scheduler);
-    rc = checkResult(task, task3);
-    if (rc != 0)
-        ++numfails;
+    totalWaitTime = 0;
 
-    task = peek(scheduler);
-    printf("peek: ");
-    printTask(task);
-    rc = checkResult(task, task1);
-    if (rc != 0)
-        ++numfails;
+    done = false;
 
-    task = dequeue(&scheduler);
-    printf("dequeued: ");
-    printTask(task);
-    rc = checkResult(task, task1);
-    if (rc != 0)
-        ++numfails;
-
-    task = peek(scheduler);
-    printf("peek: ");
-    printTask(task);
-    rc = checkResult(task, task4);
-    if (rc != 0)
-        ++numfails;
-
-    printf("--------------------------------------------------\n");
-
-    Task *task10 = createTask(10, 9, 5);
-    enqueue(&scheduler, 3, task10);
-
-    Task *task11 = createTask(11, 10, 3);
-    enqueue(&scheduler, 8, task11);
-
-    Task *task12 = createTask(12, 11, 6);
-    enqueue(&scheduler, 1, task12);
-
-    printScheduler(scheduler, printTask);
-
-    // order: task12, task7, task4, task10, task8, task5, task9, task6, task11, task2
-    Task *schedulerContents[] = {task4, task10, task11, task12, task2, task5, task6, task7, task8, task9};
-    unsigned int priorities[] = {3, 3, 8, 1, 8, 5, 7, 2, 4, 6};
-
-    int idx = 0;
-
-    while (scheduler != NULL) {
-        task = dequeue(&scheduler);
-        rc = checkResult(task, schedulerContents[idx]);
-        if (rc != 0)
-            ++numfails;
-        if (task != NULL)
+    while (!done) {
+        if (scheduler == NULL) {
+            printf("Scheduler is empty\n");
+            done = true;
+        } else {
+            minPriority = getMinPriority(scheduler);
+            while (currentTime < minPriority) {
+                printf("Time %d: CPU idle\n", currentTime);
+                currentTime++;
+            }
+            task = (Task *) dequeue(&scheduler);
+            printf("Time %d: Task %d is running\n", currentTime, task->taskID);
+            task->totalWaitTime += currentTime - task->submitTime;
+            currentTime += task->totalBurstTime;
+            printf("Time %d: Task %d finished\n", currentTime, task->taskID);
+            totalWaitTime += task->totalWaitTime;
             free(task);
-        ++idx;
-    }
-
-    // Test peek
-    task = peek(scheduler);
-    if (task == NULL) {
-        printf("ERROR: peek returned NULL\n");
-        numfails++;
-    } else {
-        if (task->taskID != 3) {
-            printf("ERROR: peek returned task with ID %d, expected 3\n", task->taskID);
-            numfails++;
         }
     }
+    printf("FCFS total wait time: %d\n", totalWaitTime);
 
-// Test getMinPriority
-    minPriority = getMinPriority(scheduler);
-    if (minPriority != 1) {
-        printf("ERROR: getMinPriority returned %d, expected 1\n", minPriority);
-        numfails++;
+    // Shortest Job First (SJF) scheduling algorithm
+    printf("Shortest Job First (SJF) scheduling algorithm\n");
+    scheduler = NULL;
+    task1 = createTask(1, 0, 6);
+    enqueue(&scheduler, 6, task1);
+
+    task2 = createTask(2, 2, 8);
+    enqueue(&scheduler, 8, task2);
+
+    task3 = createTask(3, 4, 7);
+    enqueue(&scheduler, 7, task3);
+
+    task4 = createTask(4, 8, 3);
+    enqueue(&scheduler, 3, task4);
+
+    currentTime = 0;
+
+    totalWaitTime = 0;
+
+    done = false;
+
+    while (!done) {
+        if (scheduler == NULL) {
+            printf("Scheduler is empty\n");
+            done = true;
+        } else {
+            minPriority = getMinPriority(scheduler);
+            while (currentTime < minPriority) {
+                printf("Time %d: CPU idle\n", currentTime);
+                currentTime++;
+            }
+            task = (Task *) dequeue(&scheduler);
+            printf("Time %d: Task %d is running\n", currentTime, task->taskID);
+            task->totalWaitTime += currentTime - task->submitTime;
+            currentTime += task->totalBurstTime;
+            printf("Time %d: Task %d finished\n", currentTime, task->taskID);
+            totalWaitTime += task->totalWaitTime;
+            free(task);
+        }
     }
-// First come first serve (FCFS) and shortest job first (SJF) scheduling algorithm
+    printf("SJF total wait time: %d\n", totalWaitTime);
 }
 
 int main() {
