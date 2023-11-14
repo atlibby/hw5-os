@@ -73,10 +73,18 @@ if (algo_switch == 0) {
     bool done = false;
 
     while (!done) {
-        currentTime = getMinPriority(futureQueue);
-        minPriority = getMinPriority(futureQueue);
-        while (minPriority <= currentTime) {
+        if (peek(futureQueue) == NULL) {
+            minPriority = getMinPriority(taskQueue);
+        }
+        else{
+            currentTime = getMinPriority(futureQueue);
+            minPriority = getMinPriority(futureQueue);
+        }
+        while (minPriority <= currentTime || peek(futureQueue) != NULL) {
             printf("Time %d: CPU idle\n", currentTime);
+            if (peek(futureQueue) == NULL) {
+                break;
+            }
             task = (Task *) dequeue(&futureQueue);
             if (algo_switch == 0) {
                 enqueue(&taskQueue, task->submitTime, task);
@@ -84,9 +92,6 @@ if (algo_switch == 0) {
                 enqueue(&taskQueue, task->totalBurstTime, task);
             }
             minPriority = getMinPriority(futureQueue);
-            if (futureQueue == NULL) {
-                break;
-            }
         }
         task = (Task *) dequeue(&taskQueue);
         printf("Time %d: Task %d is running\n", currentTime, task->taskID);
@@ -98,11 +103,11 @@ if (algo_switch == 0) {
         if (taskQueue == NULL) {
             printf("Scheduler is empty\n");
             done = true;
-        }
-        if (algo_switch == 0) {
-            printf("FCFS total wait time: %d\n", totalWaitTime);
-        } else {
-            printf("SJF total wait time: %d\n", totalWaitTime);
+            if (algo_switch == 0) {
+                printf("FCFS total wait time: %d\n", totalWaitTime);
+            } else {
+                printf("SJF total wait time: %d\n", totalWaitTime);
+            }
         }
     }
     return algo_switch;
