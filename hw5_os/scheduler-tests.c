@@ -21,179 +21,71 @@ Task *createTask(int taskID, int submitTime, int totalBurstTime) {
     return task;
 }
 
-int schedulerTests() {
+int schedulerTests(int algo_switch) {
     int minPriority;
     SchedulerNode *taskQueue = NULL;
     SchedulerNode *futureQueue = NULL;
     Task *task;
 
-//    Task *task1 = createTask(1, 0, 6);
-//    enqueue(&taskQueue, 3, task1);
-//
-//    Task *task2 = createTask(2, 2, 8);
-//    enqueue(&taskQueue, 8, task2);
-//
-//    Task *task3 = createTask(3, 4, 7);
-//    enqueue(&taskQueue, 1, task3);
-//
-//    Task *task4 = createTask(4, 8, 3);
-//    enqueue(&taskQueue, 3, task4);
-
-    int currentTime = 0;
-
-    int totalWaitTime = 0;
-
-    int currentID = 0;
-
-    bool done;
-
 // First come, first served (FCFS) scheduling algorithm
+if (algo_switch == 0) {
     printf("First come first served (FCFS) scheduling algorithm\n");
     taskQueue = NULL;
     futureQueue = NULL;
-
-    Task *task1 = createTask(1, 0, 6);
-    enqueue(&taskQueue, 0, task1);
-
-    Task *task2 = createTask(2, 2, 8);
-    enqueue(&taskQueue, 2, task2);
-
-    Task *task3 = createTask(3, 4, 7);
-    enqueue(&taskQueue, 4, task3);
-
-    Task *task4 = createTask(4, 8, 3);
-    enqueue(&taskQueue, 8, task4);
-
-    currentTime = 0;
-
-    totalWaitTime = 0;
-
-    currentID = 1;
-
-    task1->taskID = currentID;
-
-    currentID += 1;
-
-    enqueue(&futureQueue, task1->submitTime, task1);
-
-    task2->taskID = currentID;
-
-    currentID += 1;
-
-    enqueue(&futureQueue, task2->submitTime, task2);
-
-    task3->taskID = currentID;
-
-    currentID += 1;
-
-    enqueue(&futureQueue, task3->submitTime, task3);
-
-    task4->taskID = currentID;
-
-    currentID += 1;
-
-    enqueue(&futureQueue, task4->submitTime, task4);
-
-    done = false;
-
-    while (!done) {
-        if (taskQueue == NULL) {
-            printf("Scheduler is empty\n");
-            done = true;
-        }
-
-        else {
-            minPriority = getMinPriority(taskQueue);
-            while (currentTime < minPriority) {
-                printf("Time %d: CPU idle\n", currentTime);
-                currentTime++;
-                if (futureQueue != NULL) {
-                    while (getMinPriority(futureQueue) < currentTime) {
-                        task = (Task *) dequeue(&futureQueue);
-                        currentTime = task->submitTime;
-                        printf("Time %d: Task %d arrived\n", currentTime, task->taskID);
-
-                    }
-                }
-            }
-            task = (Task *) dequeue(&taskQueue);
-            printf("Time %d: Task %d is running\n", currentTime, task->taskID);
-            task->totalWaitTime += currentTime - task->submitTime;
-            currentTime += task->totalBurstTime;
-            printf("Time %d: Task %d finished\n", currentTime, task->taskID);
-            totalWaitTime += task->totalWaitTime;
-            free(task);
-        }
-    }
-    printf("FCFS total wait time: %d\n", totalWaitTime);
-
-    // Shortest Job First (SJF) scheduling algorithm
-    printf("Shortest Job First (SJF) scheduling algorithm\n");
+} else {
+    printf("Shortest job first (SJF) scheduling algorithm\n");
     taskQueue = NULL;
     futureQueue = NULL;
+}
 
-    task1 = createTask(1, 0, 6);
-    enqueue(&taskQueue, 6, task1);
+    int currentTime;
 
-    task2 = createTask(2, 2, 8);
-    enqueue(&taskQueue, 8, task2);
+    int totalWaitTime = 0;
 
-    task3 = createTask(3, 4, 7);
-    enqueue(&taskQueue, 7, task3);
+    int currentID = 1;
 
-    task4 = createTask(4, 8, 3);
-    enqueue(&taskQueue, 3, task4);
-
-    currentTime = 0;
-
-    totalWaitTime = 0;
-
-    currentID = 1;
-
+    Task *task1 = createTask(1, 0, 6);
     task1->taskID = currentID;
 
     currentID += 1;
 
     enqueue(&futureQueue, task1->submitTime, task1);
 
+    Task *task2 = createTask(1, 2, 8);
     task2->taskID = currentID;
 
     currentID += 1;
 
     enqueue(&futureQueue, task2->submitTime, task2);
 
+    Task *task3 = createTask(1, 4, 7);
     task3->taskID = currentID;
 
     currentID += 1;
 
     enqueue(&futureQueue, task3->submitTime, task3);
 
+    Task *task4 = createTask(1, 8, 3);
     task4->taskID = currentID;
-
-    currentID += 1;
 
     enqueue(&futureQueue, task4->submitTime, task4);
 
-    done = false;
+    bool done = false;
 
     while (!done) {
-        if (taskQueue == NULL) {
-            printf("Scheduler is empty\n");
-            done = true;
-        }
-
-        else {
-            minPriority = getMinPriority(taskQueue);
-            while (currentTime < minPriority) {
-                printf("Time %d: CPU idle\n", currentTime);
-                currentTime++;
+        currentTime = getMinPriority(futureQueue);
+        minPriority = getMinPriority(futureQueue);
+        while (minPriority <= currentTime) {
+            printf("Time %d: CPU idle\n", currentTime);
+            task = (Task *) dequeue(&futureQueue);
+            if (algo_switch == 0) {
+                enqueue(&taskQueue, task->submitTime, task);
+            } else {
+                enqueue(&taskQueue, task->totalBurstTime, task);
             }
-            if (futureQueue != NULL) {
-                while (getMinPriority(futureQueue) < currentTime) {
-                    task = (Task *) dequeue(&futureQueue);
-                    currentTime = task->submitTime;
-                    printf("Time %d: Task %d arrived\n", currentTime, task->taskID);
-                }
+            minPriority = getMinPriority(futureQueue);
+            if (futureQueue == NULL) {
+                break;
             }
         }
         task = (Task *) dequeue(&taskQueue);
@@ -203,12 +95,23 @@ int schedulerTests() {
         currentTime += task->totalBurstTime;
         printf("Time %d: Task %d finished\n", currentTime, task->taskID);
         free(task);
+        if (taskQueue == NULL) {
+            printf("Scheduler is empty\n");
+            done = true;
+        }
+        if (algo_switch == 0) {
+            printf("FCFS total wait time: %d\n", totalWaitTime);
+        } else {
+            printf("SJF total wait time: %d\n", totalWaitTime);
+        }
     }
-    printf("SJF total wait time: %d\n", totalWaitTime);
-    return 0;
+    return algo_switch;
 }
 
 int main() {
-    schedulerTests();
+    int fcfs_num = 0;
+    int sjf_num = 1;
+    schedulerTests(fcfs_num);
+    schedulerTests(sjf_num);
     return 0;
 }
