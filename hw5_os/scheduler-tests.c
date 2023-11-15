@@ -89,7 +89,11 @@ if (algo_switch == 0) {
             if (algo_switch == 0) {
                 enqueue(&taskQueue, task->submitTime, task);
             } else {
-                enqueue(&taskQueue, task->totalBurstTime, task);
+                if (peek(taskQueue) != task) {
+                        enqueue(&taskQueue, task->totalBurstTime, task);
+                        task = (Task *) dequeue(&taskQueue);
+                        enqueue(&taskQueue, task->submitTime, task);
+                    }
             }
             minPriority = getMinPriority(futureQueue);
         }
