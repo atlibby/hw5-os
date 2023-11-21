@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include "scheduler.atlibby.alynkirscht.h"
 
+#define MAX_PRIORITY 1000000
+
+#define QUANTUM 3
+
 // Create tasks and put them in the taskQueue
 Task *createTask(int taskID, int submitTime, int totalBurstTime) {
     Task *task;
@@ -22,7 +26,6 @@ Task *createTask(int taskID, int submitTime, int totalBurstTime) {
 }
 
 int schedulerTests(int algo_switch) {
-    int minPriority;
     SchedulerNode *taskQueue = NULL;
     SchedulerNode *futureQueue = NULL;
     Task *task;
@@ -32,8 +35,13 @@ if (algo_switch == 0) {
     printf("First come first served (FCFS) scheduling algorithm\n");
     taskQueue = NULL;
     futureQueue = NULL;
-} else {
+} else if (algo_switch == 1){
     printf("Shortest job first (SJF) scheduling algorithm\n");
+    taskQueue = NULL;
+    futureQueue = NULL;
+}
+else {
+    printf("Round Robin scheduling algorithm\n");
     taskQueue = NULL;
     futureQueue = NULL;
 }
@@ -86,11 +94,36 @@ if (algo_switch == 0) {
             if (peek(taskQueue) != NULL) {
                 Task *runningTask = (Task *)dequeue(&taskQueue);
 
-                printf("Time %d: Task %d is running\n", currentTime, runningTask->taskID);
-                runningTask->totalWaitTime += currentTime - runningTask->submitTime;
-                totalWaitTime += runningTask->totalWaitTime;
-                currentTime += runningTask->totalBurstTime;
-                printf("Time %d: Task %d finished\n", currentTime, runningTask->taskID);
+                if (algo_switch == 2) {
+                    printf("Time %d: Task %d is running\n", currentTime, runningTask->taskID);
+                    if (runningTask->lastRunTime > 0){
+                        runningTask->totalWaitTime += (currentTime - runningTask->lastRunTime);
+                    } else {
+                        runningTask->totalWaitTime = (currentTime - runningTask->submitTime);
+                    }
+
+                    if (QUANTUM >= runningTask->remainingBurstTime){
+                        currentTime += runningTask->remainingBurstTime;
+                        totalWaitTime += runningTask->totalWaitTime;
+                        printf("Time %d: Task %d finished\n", currentTime, runningTask->taskID);
+                    }
+
+                    else {
+                        currentTime += QUANTUM;
+                        runningTask->remainingBurstTime -= QUANTUM;
+                        runningTask->lastRunTime = currentTime;
+                        enqueue(&taskQueue, MAX_PRIORITY, runningTask);
+                    }
+                }
+
+                else{
+                    printf("Time %d: Task %d is running\n", currentTime, runningTask->taskID);
+                    runningTask->totalWaitTime += currentTime - runningTask->submitTime;
+                    totalWaitTime += runningTask->totalWaitTime;
+                    currentTime += runningTask->totalBurstTime;
+                    printf("Time %d: Task %d finished\n", currentTime, runningTask->taskID);
+                }
+
             } else {
                 currentTime = getMinPriority(futureQueue);
             }
@@ -100,8 +133,10 @@ if (algo_switch == 0) {
             done = true;
             if (algo_switch == 0) {
                 printf("FCFS total wait time: %d\n", totalWaitTime);
-            } else {
+            } else if (algo_switch == 1)
                 printf("SJF total wait time: %d\n", totalWaitTime);
+            else {
+                printf("Round Robin total wait time: %d\n", totalWaitTime);
             }
         }
     }
@@ -111,7 +146,9 @@ if (algo_switch == 0) {
 int main() {
     int fcfs_num = 0;
     int sjf_num = 1;
+    int rr_num = 2;
     schedulerTests(fcfs_num);
     schedulerTests(sjf_num);
+    schedulerTests(rr_num);
     return 0;
 }

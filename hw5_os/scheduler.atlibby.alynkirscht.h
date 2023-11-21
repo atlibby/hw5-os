@@ -10,6 +10,8 @@ typedef struct {
     int submitTime; // the time at which this task is submitted
     int totalBurstTime; // total time that this task will run
     int totalWaitTime; // the total time that this task has waited
+    int remainingBurstTime; // the remaining time that this task needs to run, used for RR
+    int lastRunTime; // the last time that this task was run
 } Task;
 
 typedef struct SchedulerNodeStruct {
