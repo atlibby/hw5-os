@@ -38,7 +38,7 @@ if (algo_switch == 0) {
     futureQueue = NULL;
 }
 
-    int currentTime;
+    int currentTime = 0;
 
     int totalWaitTime = 0;
 
@@ -73,37 +73,28 @@ if (algo_switch == 0) {
     bool done = false;
 
     while (!done) {
-        if (peek(futureQueue) == NULL) {
-            minPriority = getMinPriority(taskQueue);
-        }
-        else{
-            currentTime = getMinPriority(futureQueue);
-            minPriority = getMinPriority(futureQueue);
-        }
-        while (minPriority <= currentTime || peek(futureQueue) != NULL) {
-            printf("Time %d: CPU idle\n", currentTime);
-            if (peek(futureQueue) == NULL) {
-                break;
+        while (peek(futureQueue) != NULL || peek(taskQueue) != NULL) {
+            while (peek(futureQueue) != NULL && futureQueue->priority <= currentTime) {
+                task = (Task *)dequeue(&futureQueue);
+                if (algo_switch == 0) {
+                    enqueue(&taskQueue, task->submitTime, task);
+                } else {
+                    enqueue(&taskQueue, task->totalBurstTime, task);
+                }
             }
-            task = (Task *) dequeue(&futureQueue);
-            if (algo_switch == 0) {
-                enqueue(&taskQueue, task->submitTime, task);
+
+            if (peek(taskQueue) != NULL) {
+                Task *runningTask = (Task *)dequeue(&taskQueue);
+
+                printf("Time %d: Task %d is running\n", currentTime, runningTask->taskID);
+                runningTask->totalWaitTime += currentTime - runningTask->submitTime;
+                totalWaitTime += runningTask->totalWaitTime;
+                currentTime += runningTask->totalBurstTime;
+                printf("Time %d: Task %d finished\n", currentTime, runningTask->taskID);
             } else {
-                if (peek(taskQueue) != task) {
-                        enqueue(&taskQueue, task->totalBurstTime, task);
-                        task = (Task *) dequeue(&taskQueue);
-                        enqueue(&taskQueue, task->submitTime, task);
-                    }
+                currentTime = getMinPriority(futureQueue);
             }
-            minPriority = getMinPriority(futureQueue);
         }
-        task = (Task *) dequeue(&taskQueue);
-        printf("Time %d: Task %d is running\n", currentTime, task->taskID);
-        task->totalWaitTime += currentTime - task->submitTime;
-        totalWaitTime += task->totalWaitTime;
-        currentTime += task->totalBurstTime;
-        printf("Time %d: Task %d finished\n", currentTime, task->taskID);
-        free(task);
         if (taskQueue == NULL) {
             printf("Scheduler is empty\n");
             done = true;
