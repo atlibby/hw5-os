@@ -83,7 +83,7 @@ else {
     while (!done) {
         while (peek(futureQueue) != NULL || peek(taskQueue) != NULL) {
             while (peek(futureQueue) != NULL && futureQueue->priority <= currentTime) {
-                printf("Time %d: Adding task %d to scheduler\n", currentTime, ((Task *) peek(futureQueue))->taskID);
+                printf("Time %d: Adding task %d to scheduler (Submit time: %d)\n", currentTime, ((Task *) peek(futureQueue))->taskID, ((Task *) peek(futureQueue))->submitTime);
                 task = (Task *)dequeue(&futureQueue);
                 if (algo_switch == 0) {
                     enqueue(&taskQueue, task->submitTime, task);
