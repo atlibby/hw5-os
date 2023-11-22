@@ -41,7 +41,7 @@ if (algo_switch == 0) {
     futureQueue = NULL;
 }
 else {
-    printf("Round Robin scheduling algorithm\n");
+    printf("Round Robin (RR) scheduling algorithm\n");
     taskQueue = NULL;
     futureQueue = NULL;
 }
@@ -83,6 +83,7 @@ else {
     while (!done) {
         while (peek(futureQueue) != NULL || peek(taskQueue) != NULL) {
             while (peek(futureQueue) != NULL && futureQueue->priority <= currentTime) {
+                printf("Time %d: Adding task %d to scheduler\n", currentTime, ((Task *) peek(futureQueue))->taskID);
                 task = (Task *)dequeue(&futureQueue);
                 if (algo_switch == 0) {
                     enqueue(&taskQueue, task->submitTime, task);
