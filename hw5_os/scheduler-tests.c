@@ -1,155 +1,156 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#include "scheduler.atlibby.alynkirscht.h"
+#include "pqueue.h"
 
-#define MAX_PRIORITY 1000000
+typedef struct {
+    int taskID; // unique ID for this task
+    int submitTime; // the time at which this task is submitted
+    int totalBurstTime; // total time that this task will run
+    int totalWaitTime; // the total time that this task has waited
+    int remainingBurstTime; // the time that this task still needs; for RR
+    int lastRunTime; // the last time this task ran; for RR
+} Task;
 
-#define QUANTUM 3
+// Implement the SJF and FCFS scheduling algorithms
+int scheduler(int schedulerType, PQueueNode **taskQueue, PQueueNode **futureQueue, int quantum) {
+    int currentTime = 0;
+    int totalWaitTime = 0;
 
-// Create tasks and put them in the taskQueue
-Task *createTask(int taskID, int submitTime, int totalBurstTime) {
-    Task *task;
-    if (taskID < 0)
-        return NULL;
-    if (submitTime < 0)
-        return NULL;
-    if (totalBurstTime < 0)
-        return NULL;
-    task = (Task *) malloc(sizeof(Task));
+    while (*taskQueue != NULL || *futureQueue != NULL) {
+        // Move tasks from futureQueue to taskQueue whose submitTime is less than currentTime
+        while (*futureQueue != NULL && ((Task *)(peek(*futureQueue)))->submitTime <= currentTime) {
+            Task *task = (Task *)dequeue(futureQueue);
+
+            if (schedulerType == 0) {
+                // SJF scheduling
+                enqueue(taskQueue, task->totalBurstTime, task);
+            } else if (schedulerType == 1) {
+                // FCFS scheduling
+                enqueue(taskQueue, task->submitTime, task);
+            } else if (schedulerType == 2) {
+                // RR scheduling
+                task->lastRunTime = currentTime; // Initialize lastRunTime
+                enqueue(taskQueue, 1000000, task);  // Set priority to a large value for FCFS behavior
+            } else {
+                printf("Invalid schedulerType\n");
+                free(task);  // Free the memory allocated for the task
+                return -1;   // Return an error code
+            }
+        }
+
+        if (*taskQueue == NULL) {
+            break;  // No tasks to process
+        }
+
+        if (schedulerType == 0 || schedulerType == 1) {
+            Task *task = (Task *)dequeue(taskQueue);
+            task->totalWaitTime += currentTime - task->submitTime;
+            totalWaitTime += task->totalWaitTime;
+
+            if (schedulerType == 0) {
+                currentTime += task->totalBurstTime;
+            } else if (schedulerType == 1) {
+                currentTime += task->totalBurstTime;
+            }
+
+            free(task);  // Free the memory allocated for the task
+        } else if (schedulerType == 2) {
+            Task *task = (Task *)dequeue(taskQueue);
+
+            if (task->lastRunTime > 0) {
+                task->totalWaitTime += (currentTime - task->lastRunTime);
+            } else {
+                task->totalWaitTime = currentTime - task->submitTime;
+            }
+
+            if (quantum >= task->remainingBurstTime) {
+                // Task is complete
+                currentTime += task->remainingBurstTime;
+                totalWaitTime += task->totalWaitTime;
+                free(task);  // Free the memory allocated for the task
+            } else {
+                // Task needs more than the time quantum
+                currentTime += quantum;
+                task->remainingBurstTime -= quantum;
+                task->lastRunTime = currentTime;
+                enqueue(taskQueue, 1000000, task);  // Set priority to a large value for FCFS behavior
+            }
+        }
+    }
+
+    return totalWaitTime;
+}
+
+void createTask(PQueueNode **futureQueue, int taskID, int submitTime, int totalBurstTime) {
+    Task *task = malloc(sizeof(Task));
     task->taskID = taskID;
     task->submitTime = submitTime;
     task->totalBurstTime = totalBurstTime;
     task->totalWaitTime = 0;
-    return task;
+    task->remainingBurstTime = totalBurstTime;
+    task->lastRunTime = 0;
+    enqueue(futureQueue, submitTime, task);
 }
 
-int schedulerTests(int algo_switch) {
-    SchedulerNode *taskQueue = NULL;
-    SchedulerNode *futureQueue = NULL;
-    Task *task;
+int main(){
+    PQueueNode *taskQueue = NULL;    // Task queue maintained as a priority queue
+    PQueueNode *futureQueue = NULL;  // Future task queue
+    static int quantum = 4;
 
-// First come, first served (FCFS) scheduling algorithm
-if (algo_switch == 0) {
-    printf("First come first served (FCFS) scheduling algorithm\n");
-    taskQueue = NULL;
-    futureQueue = NULL;
-} else if (algo_switch == 1){
-    printf("Shortest job first (SJF) scheduling algorithm\n");
-    taskQueue = NULL;
-    futureQueue = NULL;
-}
-else {
-    printf("Round Robin (RR) scheduling algorithm\n");
-    taskQueue = NULL;
-    futureQueue = NULL;
-}
+    // Test case 1
+    printf("Test case 1\n");
+    createTask(&futureQueue, 1, 0, 6);
+    createTask(&futureQueue, 2, 2, 8);
+    createTask(&futureQueue, 3, 4, 7);
+    createTask(&futureQueue, 4, 8, 3);
 
-    int currentTime = 0;
+    int sjfWaitTime = scheduler(0, &taskQueue, &futureQueue, quantum);
+    printf("SJF Total Wait Time: %d\n", sjfWaitTime);
+    printf("SJF Average Wait Time: %f\n", (float)sjfWaitTime / 4);
 
-    int totalWaitTime = 0;
+    // Test case 1
+    createTask(&futureQueue, 1, 0, 6);
+    createTask(&futureQueue, 2, 2, 8);
+    createTask(&futureQueue, 3, 4, 7);
+    createTask(&futureQueue, 4, 8, 3);
 
-    int currentID = 1;
+    int fcfsWaitTime = scheduler(1, &taskQueue, &futureQueue, quantum);
+    printf("FCFS Total Wait Time: %d\n", fcfsWaitTime);
+    printf("FCFS Average Wait Time: %f\n", (float)fcfsWaitTime / 4);
 
-    Task *task1 = createTask(1, 0, 6);
-    task1->taskID = currentID;
+    // Test case 2
+    printf("\nTest case 2\n");
+    createTask(&futureQueue, 1, 0, 6);
+    createTask(&futureQueue, 2, 0, 8);
+    createTask(&futureQueue, 3, 0, 7);
+    createTask(&futureQueue, 4, 0, 3);
 
-    currentID += 1;
+    sjfWaitTime = scheduler(0, &taskQueue, &futureQueue, quantum);
+    printf("SJF Total Wait Time: %d\n", sjfWaitTime);
+    printf("SJF Average Wait Time: %f\n", (float)sjfWaitTime / 4);
 
-    enqueue(&futureQueue, task1->submitTime, task1);
+    // Test case 2
+    createTask(&futureQueue, 1, 0, 6);
+    createTask(&futureQueue, 2, 0, 8);
+    createTask(&futureQueue, 3, 0, 7);
+    createTask(&futureQueue, 4, 0, 3);
 
-    Task *task2 = createTask(1, 2, 8);
-    task2->taskID = currentID;
+    fcfsWaitTime = scheduler(1, &taskQueue, &futureQueue, quantum);
+    printf("FCFS Total Wait Time: %d\n", fcfsWaitTime);
+    printf("FCFS Average Wait Time: %f\n", (float)fcfsWaitTime / 4);
 
-    currentID += 1;
+    // Test case 2
+    createTask(&futureQueue, 1, 0, 6);
+    createTask(&futureQueue, 2, 0, 8);
+    createTask(&futureQueue, 3, 0, 7);
+    createTask(&futureQueue, 4, 0, 3);
 
-    enqueue(&futureQueue, task2->submitTime, task2);
 
-    Task *task3 = createTask(1, 4, 7);
-    task3->taskID = currentID;
+    int rrWaitTime = scheduler(2,&taskQueue, &futureQueue, quantum);
+    printf("RR Total Wait Time: %d\n", rrWaitTime);
+    printf("RR Average Wait Time: %f\n", (float)rrWaitTime / 4);
 
-    currentID += 1;
 
-    enqueue(&futureQueue, task3->submitTime, task3);
-
-    Task *task4 = createTask(1, 8, 3);
-    task4->taskID = currentID;
-
-    enqueue(&futureQueue, task4->submitTime, task4);
-
-    bool done = false;
-
-    while (!done) {
-        while (peek(futureQueue) != NULL || peek(taskQueue) != NULL) {
-            while (peek(futureQueue) != NULL && futureQueue->priority <= currentTime) {
-                printf("Time %d: Adding task %d to scheduler (Submit time: %d)\n", currentTime, ((Task *) peek(futureQueue))->taskID, ((Task *) peek(futureQueue))->submitTime);
-                task = (Task *)dequeue(&futureQueue);
-                if (algo_switch == 0) {
-                    enqueue(&taskQueue, task->submitTime, task);
-                } else {
-                    enqueue(&taskQueue, task->totalBurstTime, task);
-                }
-            }
-
-            if (peek(taskQueue) != NULL) {
-                Task *runningTask = (Task *)dequeue(&taskQueue);
-
-                if (algo_switch == 2) {
-                    printf("Time %d: Task %d is running\n", currentTime, runningTask->taskID);
-                    if (runningTask->lastRunTime > 0){
-                        runningTask->totalWaitTime += (currentTime - runningTask->lastRunTime);
-                    } else {
-                        runningTask->totalWaitTime = (currentTime - runningTask->submitTime);
-                    }
-
-                    if (QUANTUM >= runningTask->remainingBurstTime){
-                        currentTime += runningTask->remainingBurstTime;
-                        totalWaitTime += runningTask->totalWaitTime;
-                        printf("Time %d: Task %d finished\n", currentTime, runningTask->taskID);
-                    }
-
-                    else {
-                        currentTime += QUANTUM;
-                        runningTask->remainingBurstTime -= QUANTUM;
-                        runningTask->lastRunTime = currentTime;
-                        enqueue(&taskQueue, MAX_PRIORITY, runningTask);
-                    }
-                }
-
-                else{
-                    printf("Time %d: Task %d is running\n", currentTime, runningTask->taskID);
-                    runningTask->totalWaitTime += currentTime - runningTask->submitTime;
-                    totalWaitTime += runningTask->totalWaitTime;
-                    currentTime += runningTask->totalBurstTime;
-                    printf("Time %d: Task %d finished\n", currentTime, runningTask->taskID);
-                }
-
-            } else {
-                currentTime = getMinPriority(futureQueue);
-            }
-        }
-        if (taskQueue == NULL) {
-            printf("Scheduler is empty\n");
-            done = true;
-            if (algo_switch == 0) {
-                printf("FCFS total wait time: %d\n", totalWaitTime);
-            } else if (algo_switch == 1)
-                printf("SJF total wait time: %d\n", totalWaitTime);
-            else {
-                printf("Round Robin total wait time: %d\n", totalWaitTime);
-            }
-        }
-    }
-    return algo_switch;
-}
-
-int main() {
-    int fcfs_num = 0;
-    int sjf_num = 1;
-    int rr_num = 2;
-    schedulerTests(fcfs_num);
-    schedulerTests(sjf_num);
-    schedulerTests(rr_num);
     return 0;
 }
