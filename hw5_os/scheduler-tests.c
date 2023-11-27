@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "pqueue.h"
 
 typedef struct {
@@ -13,7 +14,7 @@ typedef struct {
 } Task;
 
 // Implement the SJF and FCFS scheduling algorithms
-int scheduler(int schedulerType, PQueueNode **taskQueue, PQueueNode **futureQueue, int quantum) {
+int scheduler(int schedulerType, PQueueNode **taskQueue, PQueueNode **futureQueue, int quantum, int contextSwitchTime) {
     int currentTime = 0;
     int totalWaitTime = 0;
 
@@ -75,12 +76,15 @@ int scheduler(int schedulerType, PQueueNode **taskQueue, PQueueNode **futureQueu
                 task->remainingBurstTime -= quantum;
                 task->lastRunTime = currentTime;
                 enqueue(taskQueue, 1000000, task);  // Set priority to a large value for FCFS behavior
+
+                // Add context switch time
+                currentTime += contextSwitchTime;
             }
         }
     }
-
     return totalWaitTime;
 }
+
 
 void createTask(PQueueNode **futureQueue, int taskID, int submitTime, int totalBurstTime) {
     Task *task = malloc(sizeof(Task));
@@ -93,10 +97,22 @@ void createTask(PQueueNode **futureQueue, int taskID, int submitTime, int totalB
     enqueue(futureQueue, submitTime, task);
 }
 
+int exprand(double mean) {
+    double r, t;
+    int rtnval;
+    r = drand48();
+    t = -log(1-r) * mean;
+    rtnval = (int) floor(t);
+    if (rtnval == 0)
+        rtnval = 1;
+    return(rtnval);
+}
+
 int main(){
     PQueueNode *taskQueue = NULL;    // Task queue maintained as a priority queue
     PQueueNode *futureQueue = NULL;  // Future task queue
     static int quantum = 4;
+    static int contextSwitchTime = 0;
 
     // Test case 1
     printf("Test case 1\n");
@@ -105,7 +121,7 @@ int main(){
     createTask(&futureQueue, 3, 4, 7);
     createTask(&futureQueue, 4, 8, 3);
 
-    int sjfWaitTime = scheduler(0, &taskQueue, &futureQueue, quantum);
+    int sjfWaitTime = scheduler(0, &taskQueue, &futureQueue, quantum, contextSwitchTime);
     printf("SJF Total Wait Time: %d\n", sjfWaitTime);
     printf("SJF Average Wait Time: %f\n", (float)sjfWaitTime / 4);
 
@@ -115,7 +131,7 @@ int main(){
     createTask(&futureQueue, 3, 4, 7);
     createTask(&futureQueue, 4, 8, 3);
 
-    int fcfsWaitTime = scheduler(1, &taskQueue, &futureQueue, quantum);
+    int fcfsWaitTime = scheduler(1, &taskQueue, &futureQueue, quantum, contextSwitchTime);
     printf("FCFS Total Wait Time: %d\n", fcfsWaitTime);
     printf("FCFS Average Wait Time: %f\n", (float)fcfsWaitTime / 4);
 
@@ -126,7 +142,7 @@ int main(){
     createTask(&futureQueue, 3, 0, 7);
     createTask(&futureQueue, 4, 0, 3);
 
-    sjfWaitTime = scheduler(0, &taskQueue, &futureQueue, quantum);
+    sjfWaitTime = scheduler(0, &taskQueue, &futureQueue, quantum, contextSwitchTime);
     printf("SJF Total Wait Time: %d\n", sjfWaitTime);
     printf("SJF Average Wait Time: %f\n", (float)sjfWaitTime / 4);
 
@@ -136,7 +152,7 @@ int main(){
     createTask(&futureQueue, 3, 0, 7);
     createTask(&futureQueue, 4, 0, 3);
 
-    fcfsWaitTime = scheduler(1, &taskQueue, &futureQueue, quantum);
+    fcfsWaitTime = scheduler(1, &taskQueue, &futureQueue, quantum, contextSwitchTime);
     printf("FCFS Total Wait Time: %d\n", fcfsWaitTime);
     printf("FCFS Average Wait Time: %f\n", (float)fcfsWaitTime / 4);
 
@@ -146,10 +162,23 @@ int main(){
     createTask(&futureQueue, 3, 0, 7);
     createTask(&futureQueue, 4, 0, 3);
 
-
-    int rrWaitTime = scheduler(2,&taskQueue, &futureQueue, quantum);
+    int rrWaitTime = scheduler(2,&taskQueue, &futureQueue, quantum, contextSwitchTime);
     printf("RR Total Wait Time: %d\n", rrWaitTime);
     printf("RR Average Wait Time: %f\n", (float)rrWaitTime / 4);
+
+    // Graph the relationship between context-switch time and throughput or mean wait time.
+    printf("\nGraph the relationship between context-switch time and throughput or mean wait time:\n");
+    printf("Context Switch Time, RR Mean Wait Time\n");
+    for (int i = 0; i <= 50; i++) {
+        createTask(&futureQueue, 1, 0, 6);
+        createTask(&futureQueue, 2, 0, 8);
+        createTask(&futureQueue, 3, 0, 7);
+        createTask(&futureQueue, 4, 0, 3);
+
+        contextSwitchTime = i;
+        rrWaitTime = scheduler(2,&taskQueue, &futureQueue, quantum, contextSwitchTime);
+        printf("%d,%f\n", contextSwitchTime, (float)rrWaitTime / 4);
+    }
 
 
     return 0;
