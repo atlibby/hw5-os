@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include "pqueue.h"
 
 typedef struct {
@@ -11,17 +12,23 @@ typedef struct {
     int totalWaitTime; // the total time that this task has waited
     int remainingBurstTime; // the time that this task still needs; for RR
     int lastRunTime; // the last time this task ran; for RR
+    int queueLength;
 } Task;
 
 // Implement the SJF and FCFS scheduling algorithms
 int scheduler(int schedulerType, PQueueNode **taskQueue, PQueueNode **futureQueue, int quantum, int contextSwitchTime) {
     int currentTime = 0;
     int totalWaitTime = 0;
+    int totalQueueLength = 0;
+    int enqueueEvents = 0;
 
     while (*taskQueue != NULL || *futureQueue != NULL) {
         // Move tasks from futureQueue to taskQueue whose submitTime is less than currentTime
         while (*futureQueue != NULL && ((Task *)(peek(*futureQueue)))->submitTime <= currentTime) {
             Task *task = (Task *)dequeue(futureQueue);
+
+            totalQueueLength += task->queueLength;
+            enqueueEvents++;
 
             if (schedulerType == 0) {
                 // SJF scheduling
@@ -82,6 +89,14 @@ int scheduler(int schedulerType, PQueueNode **taskQueue, PQueueNode **futureQueu
             }
         }
     }
+
+    /*if (enqueueEvents > 0) {
+        float meanQueueLength = (float)totalQueueLength / enqueueEvents;
+        printf("Mean Queue Length: %f\n", meanQueueLength);
+    } else {
+        printf("No enqueue events occurred.\n");
+    }*/
+
     return totalWaitTime;
 }
 
@@ -106,6 +121,32 @@ int exprand(double mean) {
     if (rtnval == 0)
         rtnval = 1;
     return(rtnval);
+}
+
+void createRandomTasks(PQueueNode **futureQueue, Task **tasks, int n, double meanBurstTime, double meanInterarrivalTime) {
+    // Seed the random number generator with the current time
+    srand48(time(NULL));
+
+    int currentTime = 0;
+
+    for (int i = 0; i < n; ++i) {
+        Task *task = malloc(sizeof(Task));
+        task->taskID = i + 1;
+        task->submitTime = currentTime;
+        task->totalBurstTime = exprand(meanBurstTime);
+        task->totalWaitTime = 0;
+        task->remainingBurstTime = task->totalBurstTime;
+        task->lastRunTime = 0;
+        task->queueLength = 0;
+
+        tasks[i] = task;
+
+        // Enqueue the task into the futureQueue
+        enqueue(futureQueue, currentTime, &tasks[i]);
+
+        // Update the current time for the next task
+        currentTime += exprand(meanInterarrivalTime);
+    }
 }
 
 int main(){
@@ -166,20 +207,23 @@ int main(){
     printf("RR Total Wait Time: %d\n", rrWaitTime);
     printf("RR Average Wait Time: %f\n", (float)rrWaitTime / 4);
 
-    // Graph the relationship between context-switch time and throughput or mean wait time.
-    printf("\nGraph the relationship between context-switch time and throughput or mean wait time:\n");
-    printf("Context Switch Time, RR Mean Wait Time\n");
-    for (int i = 0; i <= 50; i++) {
-        createTask(&futureQueue, 1, 0, 6);
-        createTask(&futureQueue, 2, 0, 8);
-        createTask(&futureQueue, 3, 0, 7);
-        createTask(&futureQueue, 4, 0, 3);
 
-        contextSwitchTime = i;
-        rrWaitTime = scheduler(2,&taskQueue, &futureQueue, quantum, contextSwitchTime);
-        printf("%d,%f\n", contextSwitchTime, (float)rrWaitTime / 4);
+    // Create n random tasks
+    int n = 50; // Number of tasks
+    double meanBurstTime = 10.0; // Adjust as needed
+    double meanInterarrivalTime = 5.0; // Adjust as needed
+
+    Task *tasks[n];
+
+    createRandomTasks(&futureQueue, &tasks, n, meanBurstTime, meanInterarrivalTime);
+
+    // Print the generated tasks
+    printf("Generated Tasks:\n");
+    printf("TaskID\tSubmitTime\tTotalBurstTime\n");
+    for (int i = 0; i < n; ++i) {
+        printf("%d\t%d\t\t%d\n", tasks[i]->taskID, tasks[i]->submitTime, tasks[i]->totalBurstTime);
+        rrWaitTime = scheduler(2, &taskQueue, &futureQueue, quantum, contextSwitchTime);
+
     }
-
-
     return 0;
 }
